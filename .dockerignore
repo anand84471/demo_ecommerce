@@ -1,0 +1,5 @@
+# Host build output and dependencies: the image builds its own, for its own platform.
+node_modules
+dist
+.git
+*.log

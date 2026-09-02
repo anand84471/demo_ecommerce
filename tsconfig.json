@@ -1,0 +1,32 @@
+{
+  // Node 20 + native ESM. `nodenext` is what makes the compiler agree with the runtime about
+  // module resolution: relative imports keep their `.js` extension in the source, because that
+  // is what the emitted JavaScript must contain for Node to resolve it.
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["es2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+
+    "rootDir": ".",
+    "outDir": "dist",
+    "sourceMap": true,
+
+    // Strict throughout, plus the two checks that catch the mistakes this codebase can actually
+    // make: an unchecked `rows[0]` on an empty result set, and an unused import left behind by a
+    // refactor.
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src", "tests"]
+}

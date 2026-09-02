@@ -1,0 +1,29 @@
+{
+  "name": "demo-ecommerce-api",
+  "version": "1.0.0",
+  "description": "E-commerce REST API over MySQL (system of record) and Elasticsearch (read model), in TypeScript",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc && cp src/models/schema.sql dist/src/models/schema.sql",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/src/server.js",
+    "seed": "node dist/src/scripts/seed.js",
+    "seed:force": "SEED_FORCE=true node dist/src/scripts/seed.js",
+    "test": "npm run build && node --test dist/tests/*.test.js",
+    "test:docker": "npm run build && docker run --rm --network demo_ecommerce_default -v \"$PWD\":/app -w /app -e API_BASE_URL=http://api:3000 node:20-alpine sh -c \"node --test dist/tests/*.test.js\""
+  },
+  "dependencies": {
+    "@elastic/elasticsearch": "^8.13.0",
+    "express": "^4.22.2",
+    "mysql2": "^3.9.7",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.25",
+    "@types/node": "^22.20.1",
+    "typescript": "^7.0.2"
+  }
+}

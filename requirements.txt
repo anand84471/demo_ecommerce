@@ -1,0 +1,90 @@
+Hi Anand,
+
+Hope you’re doing well!
+Thank you for your interest in the Backend Developer role at Arts Consolidated Aps.
+
+As the next step in our interview process, we would like you to complete a short technical assignment.
+
+Given the availability of AI-assisted tools like Cursor, GitHub Copilot, or ChatGPT, you should be able to complete this task fairly quickly.
+
+The focus is on demonstrating your understanding of backend architecture, data, databases, elasticsearch and api design.
+
+📋 Phase 1: Offline Assignment
+Objective:
+
+Build a simple e-commerce rest api using NodeJS, ElasticSearch and MySQL using https://dummyjson.com/products as dummy data
+
+📦 Task Details
+You are required to build a basic e-commerce api with the followings
+
+1. Docker setup for webserver, elasticsearch and mysql. 
+     It should run out of the box, so basically I can do “docker compose up” and rest service is running. Basically I want to be able to test without installation.
+
+2. Script to fetch data and populate in database
+     Fetch data from https://dummyjson.com/products and insert into database
+
+     Please create a proper schema for the data in MySQL
+
+
+3: Index the data into ElasticSearch
+
+
+    Please create proper ES schema for the data, the indexing be combined with above script 
+
+
+4: Simple rest api with following endpoints
+
+/categories       to list all categories ( from DB or ES ) 
+
+/products         to list all products ( from DB or ES ) 
+
+/products/{id}     get a single product by id
+
+/products?query={query}       ( full text search using ES ) 
+
+/products?category={category}       ( filter by category ) 
+
+
+
+📂 Submission Instructions
+Share a GitHub repository link or a zipped folder containing your code.
+
+
+Include a short README that explains:
+
+
+How to run the app locally
+
+
+Your thought process and any trade-offs you made
+
+
+Known limitations, if any
+
+📞 Phase 2 (Live Coding)
+If shortlisted from Phase 1, you will participate in a live coding session (30~60 minutes).
+
+In Phase 2, you will build additional features on top of your existing project.
+
+Important:
+
+The task is designed to be quite challenging for the short time frame — we encourage and expect you to use AI assistance tools like Cursor, GitHub Copilot, ChatGPT, etc.
+
+You will be evaluated not just on your output but also on:
+
+How effectively you use AI tools
+
+
+How well you understand, edit, and integrate AI-generated code
+
+
+Your problem-solving and organizational skills under time pressure
+
+
+You will receive full details of the Phase 2 task live during the call.
+
+If you have any questions before starting, feel free to reach out.
+
+Looking forward to seeing your work!
+
+Best regards,

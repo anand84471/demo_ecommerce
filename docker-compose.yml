@@ -1,0 +1,91 @@
+# The whole stack. `docker compose up` gives a working API with data already loaded.
+#
+# The API waits for MySQL and Elasticsearch to report *healthy* — not merely started — because
+# both accept TCP connections well before they can serve queries, and a race there is the usual
+# reason a "works on my machine" compose file fails on someone else's.
+
+services:
+  mysql:
+    image: mysql:8.0
+    command:
+      # utf8mb4 throughout: product titles and reviews contain non-ASCII characters, and latin1
+      # would mangle them silently on insert rather than failing.
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpw}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ecommerce}
+      MYSQL_USER: ${MYSQL_USER:-shop}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-shoppw}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    environment:
+      - discovery.type=single-node
+      # Security off deliberately: this is a local demo stack, and TLS + credentials would add
+      # setup steps to a task whose point is "it runs out of the box". Not a production posture —
+      # see the README's limitations.
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "${ES_PORT:-9200}:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      # yellow is the healthy steady state for a single node: the index asks for 0 replicas, but
+      # ES still reports yellow until it settles. Waiting for green would hang forever.
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsS http://localhost:9200/_cluster/health
+          | grep -qE '"status":"(green|yellow)"'
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 30s
+
+  api:
+    build: .
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ecommerce}
+      MYSQL_USER: ${MYSQL_USER:-shop}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-shoppw}
+      ELASTICSEARCH_NODE: http://elasticsearch:9200
+      ES_PRODUCTS_INDEX: products
+      DUMMYJSON_URL: https://dummyjson.com
+      # Seeds on boot so the stack is usable immediately. Set false to start the API against
+      # whatever is already stored (useful when iterating on the API itself).
+      SEED_ON_START: "true"
+      # Re-seeding is idempotent; this only forces it to re-fetch when data is already present.
+      SEED_FORCE: "false"
+    ports:
+      - "${API_PORT:-3000}:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+volumes:
+  mysql-data:
+  es-data:
