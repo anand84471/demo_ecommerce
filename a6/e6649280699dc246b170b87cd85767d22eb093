@@ -1,0 +1,97 @@
+.dockerignore
+  s_2c0afd01d96130::t_9da4c9e75d43f0 1-5
+Dockerfile
+  s_2c0afd01d96130::t_3b0f7010c0c291 1-33
+README.md
+  s_2c0afd01d96130::t_88badca356ffca 1-289
+docker-compose.yml
+  s_80a08539711629::t_b15467f2b080d7 1-91
+docker-entrypoint.sh
+  s_2c0afd01d96130::t_ba33af5c7c46c4 1-24
+package.json
+  s_2c0afd01d96130::t_48a92076ec7b58 1-29
+src/app.ts
+  s_2c0afd01d96130::t_7f0dec646f6f43 1-48
+src/config/database.ts
+  s_2c0afd01d96130::t_b167f5c0022147 1-127
+src/config/elasticsearch.ts
+  s_2c0afd01d96130::t_b40c852c36a0e8 1-47
+src/config/env.ts
+  s_2c0afd01d96130::t_f42c649f2c1cff 1-115
+src/controllers/category.controller.ts
+  s_2c0afd01d96130::t_ecab12ba81a1d4 1-13
+src/controllers/product.controller.ts
+  s_2c0afd01d96130::t_c80a8b01a797ec 1-43
+src/middleware/error.middleware.ts
+  s_2c0afd01d96130::t_1fa69a11e7e2c0 1-42
+src/middleware/logger.middleware.ts
+  s_2c0afd01d96130::t_1ecefdd8466a89 1-24
+src/models/product.index.ts
+  s_2c0afd01d96130::t_f88b7f7654369b 1-184
+src/models/product.model.ts
+  s_2c0afd01d96130::t_e1d1cc6da05aba 1-244
+src/models/product.types.ts
+  s_2c0afd01d96130::t_391a97e78a43d8 1-113
+src/models/productSearch.model.ts
+  s_2c0afd01d96130::t_426be080af09be 1-196
+src/models/schema.sql
+  s_80a08539711629::t_4cb4dcc824f7d8 1-113
+src/routes/category.routes.ts
+  s_2c0afd01d96130::t_9d9701b31131f5 1-8
+src/routes/health.routes.ts
+  s_2c0afd01d96130::t_082b0a36ddda53 1-36
+src/routes/product.routes.ts
+  s_2c0afd01d96130::t_517d34b4a76e02 1-12
+src/scripts/seed.ts
+  s_2c0afd01d96130::t_1a4241cfcf6676 1-387
+src/server.ts
+  s_2c0afd01d96130::t_0f6da11b1096ae 1-39
+src/services/category.service.ts
+  s_2c0afd01d96130::t_f3e74afea30add 1-34
+src/services/product.service.ts
+  s_2c0afd01d96130::t_3e1d371555f3bd 1-86
+src/utils/errors.ts
+  s_2c0afd01d96130::t_ef56fb3377cc1f 1-48
+src/utils/logger.ts
+  s_2c0afd01d96130::t_4e7f94b288efa2 1-48
+src/utils/response.ts
+  s_2c0afd01d96130::t_2e6a67752986d5 1-58
+src/validators/category.validator.ts
+  s_2c0afd01d96130::t_9aa9642cc1569f 1-12
+src/validators/common.validator.ts
+  s_2c0afd01d96130::t_f1eeb635741c5d 1-218
+src/validators/product.validator.ts
+  s_2c0afd01d96130::t_e5296b8348fa53 1-61
+tests/category.test.ts
+  s_2c0afd01d96130::t_bffc98a8c1dfdb 1-49
+tests/helpers.ts
+  s_2c0afd01d96130::t_c6eb6c7eef7250 1-77
+tests/product.test.ts
+  s_2c0afd01d96130::t_58dca0606a33ef 1-182
+tsconfig.json
+  s_2c0afd01d96130::t_5294671f1a7121 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a6e6649280699dc246b170b87cd85767d22eb093",
+  "prompts": {},
+  "sessions": {
+    "s_2c0afd01d96130": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c59663da-b06b-4f3c-9308-2be1ce284c79",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Anand Raj <anand.raj@1mg.com>"
+    },
+    "s_80a08539711629": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7798b48-3909-4573-8163-36c2b12478c0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Anand Raj <anand.raj@1mg.com>"
+    }
+  }
+}
