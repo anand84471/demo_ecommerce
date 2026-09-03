@@ -1,0 +1,195 @@
+tests/business/validation.test.ts
+  s_db252577a23f88::t_5c773159d49d78 1-151
+src/models/db/product.model.ts
+  s_db252577a23f88::t_596d3761642c9e 1,3,8,12-14,18,57-60,65-81,83-89,92,94-95,97-103
+  s_db252577a23f88::t_c65431897a58bb 2,4-7,9-11,15-17,19-56,61-64,82,90-91,93,96
+src/repositories/db/category.repository.ts
+  s_db252577a23f88::t_42a2aa861c34c1 50-54,57
+  s_db252577a23f88::t_cc8c2037466025 1-49,55-56,58-66
+src/utils/response.ts
+  s_ddeae6eeccfb88::t_72163d5b72b093 26,28-29,32
+src/config/env.ts
+  s_db252577a23f88::t_fc7f6bbb9a1e0a 67-77,116-123,127-130
+  s_db252577a23f88::t_7b5362e2a82a9a 54-57,59,113
+package.json
+  s_db252577a23f88::t_a4bdd97d96d97b 15-18
+  s_db252577a23f88::t_389999763c6cdd 10
+  s_db252577a23f88::t_c63c9caefaee43 24,30
+src/models/db/syncRun.model.ts
+  s_db252577a23f88::t_0ad44c091817c3 1-35,42-104,112-122,124-144
+  s_db252577a23f88::t_5205038f071b3b 36-41,105-111,123
+tests/helpers.ts
+  s_db252577a23f88::t_755c774eb82a24 75-120
+  s_ddeae6eeccfb88::t_ce85136523c084 43-47
+  s_ddeae6eeccfb88::t_69d757e3099bad 25-31,37-42
+src/validators/common.validator.ts
+  s_ddeae6eeccfb88::t_c502777c0c6981 228-233
+  s_ddeae6eeccfb88::t_72163d5b72b093 33-34,43,105-106
+  s_db252577a23f88::t_e0cf26c4724a71 127-151
+src/services/sync.service.ts
+  s_db252577a23f88::t_1f7fdff8fbdd60 64-72,74,82-83,90,93,95-96
+  s_db252577a23f88::t_44e3cfa2575123 1-35,37-63,73,75-81,84-89,91-92,94,97-183,196-282
+  s_db252577a23f88::t_fb283169328c3a 36,184-195
+.env.example
+  s_292abaa4c269f6::t_a1a43e273d9f06 1-2,4-5,7-9,13-16,21,24,26-27,39-44
+  s_db252577a23f88::t_6219b8cdac50fd 22-23,25,28-38
+  s_db252577a23f88::t_7b5362e2a82a9a 17-20
+src/routes/sync.routes.ts
+  s_db252577a23f88::t_e4ff3492b2ac05 1-13
+tests/conftest.ts
+  s_db252577a23f88::t_4445eeb9ca539a 1-114
+tests/api/product.test.ts
+  s_db252577a23f88::t_567f7fa8ad8705 4,31-44,68-111,163,173,177-188,228,233-236,238-246
+  s_db252577a23f88::t_d2d2e7bd492e64 260-316
+  s_db252577a23f88::t_8cd48a250475af 5,7-9
+docker-compose.yml
+  s_db252577a23f88::t_6219b8cdac50fd 76-82
+  s_db252577a23f88::t_7b5362e2a82a9a 68-69
+tests/api/sync.test.ts
+  s_db252577a23f88::t_d2d2e7bd492e64 111-151
+  s_db252577a23f88::t_8cd48a250475af 2,7,9-11
+  s_db252577a23f88::t_567f7fa8ad8705 1,3-6,8,12-110
+tests/business/documents.test.ts
+  s_db252577a23f88::t_ceb16d4952845e 1-103
+src/jobs/sync.job.ts
+  s_db252577a23f88::t_1f7fdff8fbdd60 1-77
+src/repositories/db/product.repository.ts
+  s_db252577a23f88::t_50563158955c12 1-128
+src/clients/catalogFeed.client.ts
+  s_db252577a23f88::t_927a8f478e5573 1-97,103,106,112-113,115,117-120,135-136,147-148,152-158
+  s_db252577a23f88::t_42a2aa861c34c1 98-102,104-105,107-111,114,116,121-134,137-146,149-151
+src/app.ts
+  s_db252577a23f88::t_ca4673650a37e3 15,36-39,49
+  s_ddeae6eeccfb88::t_72163d5b72b093 31-35,41-42
+src/models/db/productReview.model.ts
+  s_db252577a23f88::t_4e149951b230b8 1-37
+src/config/database.ts
+  s_db252577a23f88::t_454dde731cf51e 22-25,75,128-129,134,141-143,151,155,159-160,163-167,171-172,174-177
+  s_db252577a23f88::t_5205038f071b3b 12-14,42-46,68-74
+  s_db252577a23f88::t_ec13ef55ed791f 77-91
+  s_db252577a23f88::t_ad5f0f1113d407 109-117,119-126,144-150,152-154,156-158,161-162,173
+  s_db252577a23f88::t_f35d5b4dee3c72 76
+src/validators/sync.validator.ts
+  s_db252577a23f88::t_e0cf26c4724a71 1-53
+tests/fixtures.ts
+  s_db252577a23f88::t_73690cba0e6062 1-113,115,120-168
+  s_db252577a23f88::t_131280c2b4542e 114,116-119
+src/controllers/sync.controller.ts
+  s_db252577a23f88::t_e4ff3492b2ac05 1-94
+db/migrations/20260903061434_sync_runs_millisecond_precision.sql
+  s_db252577a23f88::t_fb283169328c3a 1-23
+tests/api/category.test.ts
+  s_db252577a23f88::t_567f7fa8ad8705 4,24-40,52-54,56-58
+  s_db252577a23f88::t_d2d2e7bd492e64 59-89
+  s_db252577a23f88::t_8cd48a250475af 5,7-9
+src/models/es/product.document.ts
+  s_db252577a23f88::t_8a616c7a1d1bb3 2,8-10,15-16,123-129,131-140,145-205,228,232-247,256-272,293-299,303,305-310
+  s_db252577a23f88::t_985cce9af562c8 3
+  s_db252577a23f88::t_22baac0f2fdcc0 30-33,42-55,76-83
+Dockerfile
+  s_db252577a23f88::t_389999763c6cdd 15-17
+src/models/db/productTag.model.ts
+  s_db252577a23f88::t_4e149951b230b8 1-21
+src/scripts/seed.ts
+  s_db252577a23f88::t_451304f7c62233 3,5-8,10-11,13,17,19,29-31,34-35,37-39,41-47,53
+  s_db252577a23f88::t_454dde731cf51e 32
+src/services/category.service.ts
+  s_db252577a23f88::t_b146b6b16ae31c 5-6,18
+  s_ddeae6eeccfb88::t_e33794f240c070 9,11-15,17
+src/utils/errors.ts
+  s_db252577a23f88::t_44e3cfa2575123 31,33-34
+src/models/db/category.model.ts
+  s_db252577a23f88::t_6d06797a06807c 7,12,18-20,26-29,31,35-40
+  s_db252577a23f88::t_985cce9af562c8 5-6
+  s_db252577a23f88::t_6837c33c93f887 1-4,8-11,13-17,21-25,30,32-34,41-51
+src/services/product.service.ts
+  s_ddeae6eeccfb88::t_e33794f240c070 4-9,20,24,26,28-29,43,45-49,51
+  s_db252577a23f88::t_b146b6b16ae31c 10-11,15-16,37,52
+src/repositories/db/syncRun.repository.ts
+  s_db252577a23f88::t_fb283169328c3a 83-86,94-95
+  s_db252577a23f88::t_d087a745de8d80 1-82,87-93,96-153
+src/controllers/product.controller.ts
+  s_ddeae6eeccfb88::t_051e27b8866e07 26
+src/repositories/db/tag.repository.ts
+  s_db252577a23f88::t_cc8c2037466025 1-29
+tests/business/productRules.test.ts
+  s_db252577a23f88::t_cd318dc689a176 1-84
+README.md
+  s_db252577a23f88::t_bfe58120fa58b9 143
+  s_db252577a23f88::t_9c28a6c3bd242f 230-234,237-245,253,255,259
+  s_db252577a23f88::t_381db288deaba5 372-373
+  s_db252577a23f88::t_8bb0c1b4cfefe3 141-142
+  s_db252577a23f88::t_9140d3863486b8 247-252
+  s_db252577a23f88::t_52df26b9a97929 280,363,365,393-420
+  s_db252577a23f88::t_2068adf6f00aec 26-54,67-70
+  s_db252577a23f88::t_0da123867c1940 328-333,383-389
+  s_db252577a23f88::t_a09ffbe973e150 267-270,316-319,322-327,336-338,377-382,421-425
+  s_ddeae6eeccfb88::t_8cacac3c12620a 57-66,71,113-119,121,123-131,133-134,260-261,305
+  s_db252577a23f88::t_985cce9af562c8 103,279,284,291,390-392
+  s_db252577a23f88::t_08a77fc29d0398 281-283,297,302-303,307-311,313-315,320-321,334-335,347-348,356,364
+src/controllers/category.controller.ts
+  s_ddeae6eeccfb88::t_051e27b8866e07 9-10,12
+db/migrations/20260902185246_initial_schema.sql
+  s_db252577a23f88::t_b52a586addcdee 1-128
+src/server.ts
+  s_ddeae6eeccfb88::t_8cbe189ffd76ea 19-20
+  s_db252577a23f88::t_ca4673650a37e3 9-11,21-28,31-34,42-43
+tests/business/migration.test.ts
+  s_db252577a23f88::t_cd318dc689a176 1-55
+src/repositories/es/product.repository.ts
+  s_db252577a23f88::t_648c7094ec3dbe 2,4-6,11-16,42-60,171-191,194-197
+  s_db252577a23f88::t_22baac0f2fdcc0 69-80,97-99
+src/models/es/category.document.ts
+  s_db252577a23f88::t_00cfb6d844a1d1 1-72
+db/migrations/20260903060451_sync_runs.sql
+  s_db252577a23f88::t_aa84462e7514f8 1-45
+src/repositories/es/category.repository.ts
+  s_db252577a23f88::t_81c87b1b6a9ba4 1-88
+tests/business/syncRun.test.ts
+  s_db252577a23f88::t_69445a9d2c64ae 1-125
+src/models/db/tag.model.ts
+  s_db252577a23f88::t_6d06797a06807c 13-15
+  s_db252577a23f88::t_37e8c2c556f7a3 1-12
+src/models/db/productImage.model.ts
+  s_db252577a23f88::t_4e149951b230b8 1-24
+src/validators/product.validator.ts
+  s_ddeae6eeccfb88::t_051e27b8866e07 11
+src/validators/category.validator.ts
+  s_ddeae6eeccfb88::t_051e27b8866e07 1,3-11
+src/models/common.types.ts
+  s_db252577a23f88::t_b48df08bfe333e 2-7,43
+package-lock.json
+  s_db252577a23f88::t_24b58dd65bbad9 14,20,164-170,1270-1281,1669-1678
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d0d967ca87c0c7bc5d7fae6910b2e3b398c4416f",
+  "prompts": {},
+  "sessions": {
+    "s_292abaa4c269f6": {
+      "agent_id": {
+        "tool": "DeputyDev",
+        "id": "474154",
+        "model": "CLAUDE_4_POINT_6_SONNET"
+      },
+      "human_author": "Anand Raj <anand.raj@1mg.com>"
+    },
+    "s_db252577a23f88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ca77035-6b89-46e9-b072-49e423d2bc30",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Anand Raj <anand.raj@1mg.com>"
+    },
+    "s_ddeae6eeccfb88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "777aea23-b7eb-414e-99cd-2833f057ef11",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Anand Raj <anand.raj@1mg.com>"
+    }
+  }
+}
