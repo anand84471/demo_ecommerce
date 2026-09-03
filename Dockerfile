@@ -12,6 +12,9 @@ RUN npm ci --no-audit --no-fund
 COPY tsconfig.json ./
 COPY src ./src
 COPY tests ./tests
+# The migrations are not compiled, but `npm run build` copies them into dist, which is the only
+# directory the runtime stage takes.
+COPY db ./db
 RUN npm run build
 
 FROM node:20-alpine

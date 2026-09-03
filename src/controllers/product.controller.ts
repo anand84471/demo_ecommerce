@@ -23,13 +23,12 @@ import { validateListProducts, validateProductId } from '../validators/product.v
  */
 export async function listProducts(req: Request, res: Response): Promise<Response> {
   const options = validateListProducts(req.query);
-  const { products, total, source } = await productService.listProducts(options);
+  const { products, total } = await productService.listProducts(options);
 
   return collection(res, products, {
     total,
     limit: options.limit,
     skip: options.skip,
-    source,
     ...(options.text ? { query: options.text } : {}),
     ...(options.category ? { category: options.category } : {}),
   });

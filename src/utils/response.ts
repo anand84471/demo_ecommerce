@@ -14,8 +14,6 @@ export interface CollectionMeta {
   total?: number;
   limit?: number;
   skip?: number;
-  /** The store that answered: `mysql` | `elasticsearch`. */
-  source?: string;
   [key: string]: unknown;
 }
 
@@ -25,21 +23,19 @@ export function item<T>(res: Response, data: T, meta?: Record<string, unknown>):
 }
 
 /**
- * A collection: `{ data: [...], meta: { total, limit, skip, source, ... } }`.
+ * A collection: `{ data: [...], meta: { total, limit, skip, ... } }`.
  *
- * `source` names the store that answered (mysql | elasticsearch). It is in the payload rather
- * than a header because this API deliberately reads from two stores, and "which one told me
- * this" is the first question when the two disagree.
+ * `total` is the size of the whole result set, not of `data` — that is the number a paginator
+ * needs, and the one a client cannot work out for itself from a single page.
  */
 export function collection<T>(res: Response, data: T[], meta: CollectionMeta = {}): Response {
-  const { total, limit, skip, source, ...rest } = meta;
+  const { total, limit, skip, ...rest } = meta;
   return res.json({
     data,
     meta: {
       total: total ?? data.length,
       ...(limit !== undefined ? { limit } : {}),
       ...(skip !== undefined ? { skip } : {}),
-      ...(source ? { source } : {}),
       ...rest,
     },
   });

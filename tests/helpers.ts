@@ -22,15 +22,29 @@ export interface CategoryJson {
   productCount: number;
 }
 
+/**
+ * A product as every read endpoint returns it.
+ *
+ * Nothing is optional: the index stores one fully precomputed document, so the listing and the
+ * detail view answer with the same fields. A `?` here would quietly permit the regression these
+ * tests exist to catch.
+ */
 export interface ProductJson {
   id: number;
   title: string;
   price: number;
   category: { slug: string; name: string } | null;
-  dimensions?: { width: number | null; height: number | null; depth: number | null };
-  images?: string[];
-  tags?: string[];
-  reviews?: unknown[];
+  dimensions: { width: number | null; height: number | null; depth: number | null };
+  images: string[];
+  tags: string[];
+  reviews: unknown[];
+  reviewCount: number;
+  meta: {
+    barcode: string | null;
+    qrCode: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+  };
 }
 
 export interface ApiError {
@@ -56,6 +70,52 @@ export async function get<T = unknown>(path: string): Promise<Result<T>> {
   // A body that is not JSON is a failure the assertions should report, not one to swallow here.
   const body = await res.json().catch(() => ({})) as Envelope<T>;
   return { status: res.status, body };
+}
+
+export async function post<T = unknown>(
+  path: string,
+  headers: Record<string, string> = {},
+): Promise<Result<T>> {
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', headers });
+  const body = await res.json().catch(() => ({})) as Envelope<T>;
+  return { status: res.status, body };
+}
+
+/** One sync run, as GET /sync/runs returns it. */
+export interface SyncRunJson {
+  id: number;
+  runDate: string;
+  trigger: string;
+  status: string;
+  stage: string;
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+  counts: {
+    productsFetched: number;
+    categoriesUpserted: number;
+    tagsUpserted: number;
+    productsUpserted: number;
+    productsIndexed: number;
+    categoriesIndexed: number;
+  };
+  error: string | null;
+}
+
+/**
+ * Wait for a run to leave `running`.
+ *
+ * Tests that trigger a sync have to leave the stack idle for the next one, or a later POST gets
+ * the 409 this helper exists to avoid.
+ */
+export async function awaitRun(id: number, timeoutMs = 60_000): Promise<SyncRunJson> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const { body } = await get<SyncRunJson>(`/sync/runs/${id}`);
+    if (body.data && body.data.status !== 'running') return body.data;
+    if (Date.now() > deadline) throw new Error(`sync run ${id} still running after ${timeoutMs}ms`);
+    await new Promise((resolve) => { setTimeout(resolve, 500); });
+  }
 }
 
 /** Fail once, with a useful message, instead of twenty confusing connection errors. */

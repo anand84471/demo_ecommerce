@@ -23,16 +23,52 @@ curl localhost:3000/health          # dependency status
 curl localhost:3000/                # endpoint index
 ```
 
+### Keeping the catalogue fresh
+
+The sync — fetch the feed, write MySQL, rebuild both indexes — is one function in
+`services/sync.service.ts` with three ways to reach it, so none of them can drift from the others:
+
+```bash
+docker compose exec api npm run seed        # once, from a shell
+curl -X POST localhost:3000/sync            # on demand; 202 + a run id to poll
+                                            # and 03:00 daily, from the in-process cron
+```
+
+Every run writes a row to `sync_runs` **as it goes**, not once at the end, so a run that dies
+halfway says how far it got:
+
+```bash
+curl "localhost:3000/sync/runs?date=$(date -u +%F)"
+```
+
+```json
+{ "id": 2, "trigger": "api", "status": "succeeded", "stage": "done", "durationMs": 1334,
+  "counts": { "productsFetched": 194, "productsUpserted": 194, "productsIndexed": 194,
+              "categoriesIndexed": 24 }, "error": null }
+```
+
+`status` distinguishes `succeeded` from `skipped` — a run that found both stores already
+populated and did nothing. A week of `skipped` means the freshness check is wrong, which a week of
+`succeeded` would hide. The cron is on inside compose and off in a bare `npm start`: a process
+that calls a third-party feed on a timer should be asked for, not inherited.
+
 ### Endpoints
 
-| Endpoint | Store | Notes |
-|---|---|---|
-| `GET /categories` | MySQL | All categories with product counts. `?source=es` for the ES aggregation |
-| `GET /products` | Elasticsearch | Paginated list. `?source=db` to serve from MySQL instead |
-| `GET /products?query=mascara` | Elasticsearch | Full-text search (`?q=` also accepted) |
-| `GET /products?category=beauty` | Elasticsearch | Filter by category slug; combines with `query` |
-| `GET /products/:id` | MySQL | One product with images, tags, reviews, dimensions |
-| `GET /health` | both | `200` healthy, `503` degraded, with per-dependency detail |
+Every read is served by Elasticsearch. MySQL is the system of record behind the index — the store
+a write would go to — and is never on a request path.
+
+| Endpoint | Notes |
+|---|---|
+| `GET /categories` | All categories with product counts. Takes no parameters |
+| `GET /products` | Paginated list (`?limit&skip&sort&order`) |
+| `GET /products?query=mascara` | Full-text search (`?q=` also accepted) |
+| `GET /products?category=beauty` | Filter by `category`, `tag`, `minPrice`, `maxPrice`; combines with `query` |
+| `GET /products/:id` | One product with images, tags, reviews, dimensions |
+| `POST /sync` | Trigger a catalogue sync. `202` with the run to poll; `?force=true` skips the freshness check |
+| `GET /sync/status` | Is a sync running, what the cron is set to, and the last one that succeeded |
+| `GET /sync/runs` | Sync history, newest first. `?date=YYYY-MM-DD&limit=` |
+| `GET /sync/runs/:id` | One run — its stage and counters, live while it is running |
+| `GET /health` | `200` healthy, `503` degraded, with per-dependency detail |
 
 Extras on `/products`: `limit`, `skip`, `sort` (`relevance|id|title|price|rating|stock`),
 `order`, `tag`, `minPrice`, `maxPrice`.
@@ -64,7 +100,7 @@ container is what the compiler checked:
 ```bash
 npm install
 npm run typecheck    # tsc --noEmit, no output written
-npm run build        # -> dist/ (plus schema.sql, copied next to its reader)
+npm run build        # -> dist/ (plus db/migrations, copied in for the seed to apply)
 npm start            # node dist/src/server.js
 ```
 
@@ -74,34 +110,37 @@ npm start            # node dist/src/server.js
 
 ### Two stores, one job each
 
-MySQL is the **system of record**: normalised, foreign keys, the authoritative answer.
-Elasticsearch is a **read model**: denormalised, disposable, rebuildable from MySQL at any time.
+MySQL is the **system of record**: normalised, foreign keys, the store a create or an update would
+go to. Elasticsearch is the **read model**: denormalised, disposable, rebuilt by the seed.
 
-That split decides every routing question:
+The division is absolute, and that is the point — **Elasticsearch answers every read; MySQL is
+only written to.** There is no `?source=` switch and no per-endpoint routing decision, because a
+store the API sometimes reads is a store the API depends on for latency. With reads confined to
+the index, a slow join or a write-side lock cannot surface as a slow catalogue.
 
-- **`/products/:id` reads MySQL.** The record a client acts on should come from the source of
-  truth, not from a copy that may be a moment behind. It also wants the full relational picture
-  (every review, every image), which is exactly what a search index deliberately doesn't hold.
-- **`/products` (list, search, filter) reads Elasticsearch.** Text relevance, fuzzy matching and
-  faceting are what it's for. The equivalent in MySQL is `LIKE '%term%'` — a table scan wearing a
-  feature's clothes.
-- **`/categories` reads MySQL.** The table can report a category with **zero** products; an ES
-  terms aggregation cannot, because an empty bucket doesn't exist. For a storefront nav that
-  difference matters.
+Two indexes carry it:
 
-`?source=db|es` exposes the alternative on both collection endpoints. That's not indecision — it
-makes divergence between the two stores observable from the API, which is the failure mode this
-architecture actually has. One of the tests asserts the two sources report identical category
-counts.
+- **`products`** — one document per product, *fully precomputed*. Category, tags, images,
+  dimensions, meta and the reviews themselves are folded in at index time, so a request is
+  answered by a single document with no join and no second trip. `GET /products/:id` is therefore
+  a lookup into the same index rather than a separate data path, which is what guarantees a list
+  card and a detail page see identical fields.
+- **`categories`** — built from the `categories` table, not aggregated out of the product
+  documents. A terms aggregation has no bucket for a category holding **zero** products, so an
+  unstocked category used to vanish from the nav, and `url` was always null. Reading the table at
+  index time fixes both: every row, its `url`, and a count from the same `GROUP BY` MySQL runs.
+
+The cost of this is **staleness**, and it is paid deliberately: a product edited in MySQL is wrong
+in the API until the next index. See the limitations below.
 
 ### Types at the boundaries, Zod at the edges
 
 Two different jobs, deliberately not conflated:
 
 **TypeScript** carries the shapes *inside* the process. `ListProductsOptions` is the contract
-between a validator and the service it feeds; `Product`, `SearchDocument` and the `Row`
-interfaces in `product.model.ts` are the contract between the stores and everything above them.
-Those are compile-time only — a renamed column breaks the build instead of quietly producing
+between a validator and the service it feeds; `SearchDocument` in `models/es/`, and the `Row` and
+`Write` interfaces in `models/db/`, are the contract between the stores and everything above
+them. Those are compile-time only — a renamed column breaks the build instead of quietly producing
 `undefined` in a response.
 
 **Zod** guards the three places data actually arrives from outside, where a type annotation would
@@ -188,32 +227,47 @@ wholesale because the source gives reviews and images no stable ids to match on.
 
 These are deliberate scope cuts, not oversights.
 
-1. **No authentication or rate limiting.** Every endpoint is public and read-only. Real usage
-   would need at least an API key and a limiter.
+1. **No authentication or rate limiting.** Every read endpoint is public. `POST /sync` is the one
+   endpoint that changes anything, and it takes an optional shared secret — set
+   `SYNC_TRIGGER_TOKEN` and it requires an `X-Sync-Token` header. Unset, it is open, which is fine
+   on a laptop and is not fine on anything with a public address: a sync drops and rebuilds both
+   indexes. Real usage would need a proper API key and a limiter.
 2. **Elasticsearch security is disabled.** No TLS, no credentials — appropriate for a local demo
    stack, not for anything else.
-3. **No write endpoints.** The catalogue is read-only; the only writer is the seed script. Adding
-   `POST /products` would raise the question this design currently dodges: dual writes to MySQL
-   and ES need an outbox or CDC to stay consistent, not two `await`s in a request handler.
-4. **Deep paging uses `from`/`skip`.** Fine to 10k, wrong beyond it — `search_after` is the
+3. **No per-resource write endpoints.** MySQL is the write store, but nothing writes to it except
+   the sync. Adding `POST /products` raises the question this design currently dodges: a write to
+   MySQL plus an index update needs an outbox or CDC to stay consistent, not two `await`s in a
+   request handler.
+4. **The sync's in-flight guard is per-process.** A module-level flag stops the cron firing on top
+   of a manual trigger inside one container; it would not stop two replicas syncing at once. That
+   wants a lock in MySQL. The failure mode is quiet and expensive — two runs rebuilding the same
+   index — which is why it is written down here and in `sync.service.ts` rather than assumed.
+5. **Deep paging uses `from`/`skip`.** Fine to 10k, wrong beyond it — `search_after` is the
    correct tool for a large catalogue.
-5. **The ES index can go stale.** Nothing re-indexes on its own; if MySQL changed underneath, you
-   re-run the seed. A production system would drive this off the binlog.
-6. **Secrets are in `docker-compose.yml`.** Convenient for a one-command demo, wrong for
+6. **The indexes can go stale, and reads have no fallback.** The cron re-syncs on a schedule
+   (03:00 daily by default), which bounds staleness rather than removing it: an edit made at 03:05
+   is invisible for a day unless someone calls `POST /sync`. Because every read goes to
+   Elasticsearch, stale documents are what the API serves and an unreachable cluster is a full
+   read outage — there is no degrading to MySQL. A production system would drive indexing off the
+   binlog rather than re-fetching the world on a timer.
+7. **Secrets are in `docker-compose.yml`.** Convenient for a one-command demo, wrong for
    deployment — they belong in a secret manager.
-7. **Tests need the stack running.** They're integration tests by choice: the ES query DSL and
+8. **Tests need the stack running.** They're integration tests by choice: the ES query DSL and
    the SQL *are* the logic here, and a mocked Elasticsearch would happily confirm that a broken
    query is well-formed. The trade-off is that they're not runnable in a bare CI job without
    `docker compose up` first.
-8. **`?source=db` can't do full-text.** It rejects `query=` rather than quietly degrading to a
-   `LIKE`, which would be slow and would return different results from the same endpoint.
+9. **Reviews are stored, not searchable.** They are mapped `enabled: false` — carried in the
+   document for display, with `reviewCount` as the sortable summary. Searching review text would
+   want them `nested` and re-indexed.
 
 ---
 
 ## Layout
 
-Conventional Express layering — a request flows **routes → controllers → services → models**,
-and each layer knows only the one beneath it.
+Conventional Express layering — a request flows **routes → controllers → services →
+repositories**, and each layer knows only the one beneath it. `models/` sits to the side of that
+chain rather than at the end of it: it holds shapes and schemas, and the repositories are what
+actually talk to a store.
 
 ```
 docker-compose.yml          mysql + elasticsearch + api, health-gated
@@ -222,34 +276,66 @@ docker-entrypoint.sh        seeds, then serves
 package.json  tsconfig.json
 .env.example  .gitignore  .dockerignore
 │
+├── db/
+│   └── migrations/                 dbmate format, applied in filename order
+│       ├── 20260902185246_initial_schema.sql
+│       ├── 20260903060451_sync_runs.sql
+│       └── 20260903061434_sync_runs_millisecond_precision.sql
+│
 ├── src/
 │   ├── app.ts                      Express assembly (middleware, routes)
 │   ├── server.ts                   binds the port, graceful shutdown
 │   │
 │   ├── config/
 │   │   ├── env.ts                  environment, parsed by a Zod schema
-│   │   ├── database.ts             MySQL pool, transactions, schema apply
+│   │   ├── database.ts             MySQL pool, transactions, migration apply
 │   │   └── elasticsearch.ts        ES client + readiness
 │   │
 │   ├── routes/                     path -> controller, nothing else
 │   │   ├── product.routes.ts
 │   │   ├── category.routes.ts
+│   │   ├── sync.routes.ts
 │   │   └── health.routes.ts
 │   │
 │   ├── controllers/                validate, delegate, respond
 │   │   ├── product.controller.ts
-│   │   └── category.controller.ts
+│   │   ├── category.controller.ts
+│   │   └── sync.controller.ts
 │   │
-│   ├── services/                   business logic: which store answers what
+│   ├── services/                   business logic
 │   │   ├── product.service.ts
-│   │   └── category.service.ts
+│   │   ├── category.service.ts
+│   │   └── sync.service.ts         the catalogue sync — feed -> MySQL -> Elasticsearch
 │   │
-│   ├── models/                     data access + schemas
-│   │   ├── schema.sql              MySQL DDL
-│   │   ├── product.types.ts        the domain shapes both stores map onto
-│   │   ├── product.model.ts        MySQL queries
-│   │   ├── product.index.ts        ES mapping + document shaping
-│   │   └── productSearch.model.ts  ES queries
+│   ├── jobs/
+│   │   └── sync.job.ts             the cron that calls it
+│   │
+│   ├── clients/
+│   │   └── catalogFeed.client.ts   the upstream feed, and the schema guarding it
+│   │
+│   ├── repositories/               store access: SQL, query DSL, index lifecycle
+│   │   ├── db/                     MySQL — write-only, plus the indexer's category read
+│   │   │   ├── product.repository.ts
+│   │   │   ├── category.repository.ts
+│   │   │   ├── tag.repository.ts
+│   │   │   └── syncRun.repository.ts
+│   │   └── es/                     Elasticsearch — every read the API serves
+│   │       ├── product.repository.ts
+│   │       └── category.repository.ts
+│   │
+│   ├── models/                     shapes and schemas only — no queries
+│   │   ├── common.types.ts         the shapes both stores agree on
+│   │   ├── db/                     one model per table, named after it
+│   │   │   ├── category.model.ts   categories       (+ row -> domain)
+│   │   │   ├── product.model.ts    products
+│   │   │   ├── productImage.model.ts   product_images
+│   │   │   ├── tag.model.ts            tags
+│   │   │   ├── productTag.model.ts     product_tags
+│   │   │   ├── productReview.model.ts  product_reviews
+│   │   │   └── syncRun.model.ts        sync_runs
+│   │   └── es/
+│   │       ├── product.document.ts   mapping, document shape, document shaping
+│   │       └── category.document.ts
 │   │
 │   ├── middleware/
 │   │   ├── error.middleware.ts     the one place an error becomes a response
@@ -258,7 +344,8 @@ package.json  tsconfig.json
 │   ├── validators/                 request -> typed, bounded options
 │   │   ├── common.validator.ts     Zod parameter primitives + error mapping
 │   │   ├── product.validator.ts
-│   │   └── category.validator.ts
+│   │   ├── category.validator.ts
+│   │   └── sync.validator.ts
 │   │
 │   ├── utils/
 │   │   ├── logger.ts
@@ -266,24 +353,73 @@ package.json  tsconfig.json
 │   │   └── errors.ts               AppError + asyncHandler
 │   │
 │   └── scripts/
-│       └── seed.ts                 fetch -> MySQL -> Elasticsearch
+│       └── seed.ts                 runs the sync once, from a shell
 │
 ├── dist/                           compiled output (git-ignored)
 │
 └── tests/
     ├── helpers.ts
     ├── product.test.ts
-    └── category.test.ts
+    ├── category.test.ts
+    ├── sync.test.ts
+    └── migration.test.ts        the migration parser; needs no running stack
 ```
 
 **Two deviations from the template**, both because inventing the files would mean shipping dead
 code:
 
 - **No `user.*` files.** This is a read-only catalogue with no user domain. The layering is
-  identical, so adding one is mechanical: a route, a controller, a service, a model.
+  identical, so adding one is mechanical: a route, a controller, a service, a repository
+  and its model.
 - **No `auth.middleware.ts`.** Nothing to authenticate yet — every endpoint is public and
   read-only. It would be an empty function nobody calls.
 
-`models/` also holds the Elasticsearch mapping alongside the SQL DDL: both are schema
-definitions, and keeping them side by side is what makes it obvious they describe the same
-entity in two stores.
+**`models/` and `repositories/` split along the same line, twice.** Each is divided by store —
+`db/` for MySQL, `es/` for Elasticsearch — so the pair of files describing one entity in one store
+sit together: `models/db/product.model.ts` says what a product row is, and
+`repositories/db/product.repository.ts` is the only file that writes one. The SQL DDL and the
+Elasticsearch mapping are both schema definitions, and keeping them in sibling folders is what
+makes it obvious they describe the same entity twice.
+
+**`models/db/` has one file per table**, including the join table and the two child tables, and
+including `products` — which nothing reads, since Elasticsearch answers every request. Each
+declares a `Row` mirroring the DDL column for column, and, where the seed writes to that table, a
+`Write` giving the caller's side of it: camelCase, optional where the source feed is optional, and
+carrying slugs rather than the surrogate ids the foreign keys use. The mapping between the two
+vocabularies happens in exactly one place, the repository.
+
+**The DDL itself is not in `src/`.** `db/migrations/` sits at the root because it is not
+TypeScript and not the application — it is the database's own history, and it outlives any one
+version of the code that reads it.
+
+The files are in **dbmate's format**: a `YYYYMMDDHHMMSS_name.sql` filename, and the statements
+split into `-- migrate:up` and `-- migrate:down` blocks.
+
+```sql
+-- migrate:up
+CREATE TABLE IF NOT EXISTS categories (…);
+
+-- migrate:down
+DROP TABLE IF EXISTS categories;
+```
+
+`dbmate up` would run the directory unchanged, and a reviewer gets a layout they already know.
+What is deliberately *not* dbmate is the **runner**: `applyMigrations` in `config/database.ts`
+reads the directory itself, in filename order, applying each file's up block — which keeps the
+whole stack to one `docker compose up`, with no second binary to install and no `DATABASE_URL` to
+assemble. Extracting the up block is load-bearing rather than cosmetic, since the other half of
+each file is `DROP TABLE`; `tests/migration.test.ts` is there to keep it that way.
+
+The timestamp prefix is what makes the directory listing and the intended order the same thing,
+and it is why two people adding migrations on separate branches do not collide the way a `002_`
+counter would.
+
+There is no `schema_migrations` ledger yet, because every up statement is
+`CREATE TABLE IF NOT EXISTS` and so re-running the whole directory on each seed is free. The first
+migration that is not idempotent — a column rename, a backfill — is the point at which one is
+needed, and the point at which handing the directory to dbmate itself becomes the cheaper answer.
+
+Repositories are modules of exported functions rather than classes, imported under a namespace
+(`import * as productRepository from '…/es/product.repository.js'`), which matches the rest of the
+codebase and is what lets the same function name — `findCategories` — mean the MySQL read in one
+file and the Elasticsearch read in another without either having to be renamed.

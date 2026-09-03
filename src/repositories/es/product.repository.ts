@@ -1,17 +1,19 @@
 /**
- * Product data access against Elasticsearch — the search read model.
+ * Product persistence against Elasticsearch — the read model the API is served from.
  *
- * The sibling of product.model.ts: same layer, different store. This one owns the query DSL and
- * nothing else.
+ * The repository layer is where store access lives: query DSL, bulk writes, index lifecycle. It
+ * owns *how* a question is asked, never *whether* it should be — a repository has no opinion
+ * about which store answers a request, and no knowledge of HTTP. Its models are in models/es/.
  */
 
 import type { estypes } from '@elastic/elasticsearch';
 
-import { getEsClient } from '../config/elasticsearch.js';
-import { PRODUCTS_INDEX } from './product.index.js';
-import type {
-  CategoryWithCount, ProductPage, ScoredSearchDocument, SearchDocument,
-} from './product.types.js';
+import { getEsClient } from '../../config/elasticsearch.js';
+import type { ProductPage } from '../../models/common.types.js';
+import {
+  PRODUCTS_INDEX, productsIndexDefinition,
+  type ScoredSearchDocument, type SearchDocument,
+} from '../../models/es/product.document.js';
 
 const SORTABLE = {
   // `_score` only means anything when there is a query; the service falls back to `id` otherwise.
@@ -38,6 +40,25 @@ export interface SearchProductsOptions {
 }
 
 /**
+ * Create the index if absent; drop and recreate when `recreate` is set.
+ *
+ * Mappings are effectively immutable in Elasticsearch — you cannot change a field's type in
+ * place — so a change to models/es/product.document.ts only takes effect on a fresh index.
+ * Recreating on seed is what keeps the running index honest to the definition.
+ */
+export async function ensureProductsIndex({ recreate = false } = {}): Promise<void> {
+  const es = getEsClient();
+  const exists = await es.indices.exists({ index: PRODUCTS_INDEX });
+
+  if (exists && recreate) {
+    await es.indices.delete({ index: PRODUCTS_INDEX });
+  }
+  if (!exists || recreate) {
+    await es.indices.create({ index: PRODUCTS_INDEX, ...productsIndexDefinition });
+  }
+}
+
+/**
  * The free-text query.
  *
  * `best_fields` rather than `cross_fields`: a product is normally identified by one field saying
@@ -45,8 +66,18 @@ export interface SearchProductsOptions {
  * a title hit well above a description mention, and the un-stemmed `title.exact` phrase clause
  * lifts a literal title match above a stemmed near-miss.
  *
- * Fuzziness is capped at one edit with `prefix_length: 1`, which recovers "mascera" -> "mascara"
- * without letting three-letter words match half the catalogue.
+ * Three clauses, because typo tolerance and prefix matching are different problems:
+ *
+ *   - the fuzzy `multi_match` handles misspellings — "mascera" -> "mascara". `AUTO` spends one
+ *     edit on terms of 3-5 characters and two on longer ones, and `prefix_length: 1` pins the
+ *     first character so short words cannot drift into half the catalogue.
+ *   - the `title.exact` phrase lifts a literal title match above a stemmed near-miss.
+ *   - `title.autocomplete` matches a word the user has not finished typing.
+ *
+ * The last one is not decoration. Without it, fuzziness was standing in for prefix matching and
+ * doing it non-monotonically: "mono" matched *Moonphase* (one transposition), "monop" matched
+ * nothing (two edits away, and only one was budgeted), and "monopo" matched Monopod. Adding a
+ * letter made results disappear and then reappear as a different product.
  */
 function buildTextQuery(text: string): estypes.QueryDslQueryContainer {
   return {
@@ -63,6 +94,9 @@ function buildTextQuery(text: string): estypes.QueryDslQueryContainer {
           },
         },
         { match_phrase: { 'title.exact': { query: text, boost: 6 } } },
+        // Below the exact phrase: someone who typed the whole title wants that product first,
+        // not whatever else happens to start with the same letters.
+        { match: { 'title.autocomplete': { query: text, boost: 3 } } },
       ],
       minimum_should_match: 1,
     },
@@ -134,36 +168,33 @@ function totalHits(total: estypes.SearchTotalHits | number | undefined): number 
   return typeof total === 'number' ? total : total.value;
 }
 
-interface CategoryAggregations {
-  categories: estypes.AggregationsStringTermsAggregate & {
-    buckets: Array<{
-      key: string;
-      doc_count: number;
-      name?: { buckets?: Array<{ key: string }> };
-    }>;
-  };
+/**
+ * One document by id, or null when the index has no such product.
+ *
+ * A `get` rather than a search: fetching by document id is a direct lookup that skips scoring and
+ * the query phase entirely, and it is realtime — it will return a document that has been indexed
+ * but not yet refreshed into the searchable segments, which a search would miss.
+ */
+export async function findProductById(id: number): Promise<SearchDocument | null> {
+  try {
+    const response = await getEsClient().get<SearchDocument>({
+      index: PRODUCTS_INDEX,
+      id: String(id),
+    });
+    return response._source ?? null;
+  } catch (err) {
+    // A missing document is a 404 from Elasticsearch, which the client raises rather than
+    // returns. That is this function's null, not an error — anything else genuinely is one and
+    // must keep propagating, or an unreachable cluster would masquerade as an empty catalogue.
+    if (isNotFound(err)) return null;
+    throw err;
+  }
 }
 
-/** Categories derived from the index rather than the table (a terms aggregation). */
-export async function aggregateCategories(): Promise<CategoryWithCount[]> {
-  const response = await getEsClient().search<SearchDocument, CategoryAggregations>({
-    index: PRODUCTS_INDEX,
-    size: 0,
-    aggs: {
-      categories: {
-        terms: { field: 'category.slug', size: 500, order: { _key: 'asc' } },
-        aggs: { name: { terms: { field: 'category.name.keyword', size: 1 } } },
-      },
-    },
-  });
-
-  const buckets = response.aggregations?.categories.buckets ?? [];
-  return buckets.map((bucket) => ({
-    slug: bucket.key,
-    name: bucket.name?.buckets?.[0]?.key ?? bucket.key,
-    url: null,
-    productCount: bucket.doc_count,
-  }));
+/** True for Elasticsearch's own 404, and nothing else. */
+function isNotFound(err: unknown): boolean {
+  return typeof err === 'object' && err !== null
+    && (err as { statusCode?: number }).statusCode === 404;
 }
 
 /**

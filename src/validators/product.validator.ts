@@ -8,16 +8,14 @@
 
 import {
   checkPagingWindow, enumParam, intParam, numberParam, pagingShape, parsePathParam, queryParser,
-  stringParam, withDefault,
+  stringParam,
 } from './common.validator.js';
 
 export const SORT_FIELDS = ['relevance', 'id', 'title', 'price', 'rating', 'stock'] as const;
 export const SORT_ORDERS = ['asc', 'desc'] as const;
-export const SOURCES = ['es', 'db'] as const;
 
 export type SortField = typeof SORT_FIELDS[number];
 export type SortOrder = typeof SORT_ORDERS[number];
-export type Source = typeof SOURCES[number];
 
 /** The typed result of validating `GET /products` — the service layer's input contract. */
 export interface ListProductsOptions {
@@ -28,7 +26,6 @@ export interface ListProductsOptions {
   maxPrice: number | undefined;
   sort: SortField | undefined;
   order: SortOrder | undefined;
-  source: Source;
   limit: number;
   skip: number;
 }
@@ -43,7 +40,6 @@ const parseListQuery = queryParser({
   maxPrice: numberParam('maxPrice', { min: 0 }),
   sort: enumParam('sort', SORT_FIELDS),
   order: enumParam('order', SORT_ORDERS),
-  source: withDefault(enumParam('source', SOURCES), 'es'),
   ...pagingShape,
 }, checkPagingWindow);
 
