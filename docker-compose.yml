@@ -65,13 +65,21 @@ services:
       MYSQL_USER: ${MYSQL_USER:-shop}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-shoppw}
       ELASTICSEARCH_NODE: http://elasticsearch:9200
-      ES_PRODUCTS_INDEX: products
+      ES_PRODUCTS_INDEX: ${ES_PRODUCTS_INDEX:-products}
+      ES_CATEGORIES_INDEX: ${ES_CATEGORIES_INDEX:-categories}
       DUMMYJSON_URL: https://dummyjson.com
       # Seeds on boot so the stack is usable immediately. Set false to start the API against
       # whatever is already stored (useful when iterating on the API itself).
       SEED_ON_START: "true"
       # Re-seeding is idempotent; this only forces it to re-fetch when data is already present.
       SEED_FORCE: "false"
+      # The daily catalogue sync, on inside the stack. It skips when both stores already hold
+      # data, so the 03:00 firing is a no-op until the freshness check has something to do.
+      SYNC_CRON_ENABLED: "true"
+      SYNC_CRON_SCHEDULE: ${SYNC_CRON_SCHEDULE:-0 3 * * *}
+      SYNC_CRON_TIMEZONE: ${SYNC_CRON_TIMEZONE:-UTC}
+      # Unset: POST /sync is open inside the compose network. Set it for anything reachable.
+      SYNC_TRIGGER_TOKEN: ${SYNC_TRIGGER_TOKEN:-}
     ports:
       - "${API_PORT:-3000}:3000"
     depends_on:

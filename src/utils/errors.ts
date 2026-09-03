@@ -28,7 +28,10 @@ export class AppError extends Error {
 }
 
 export const badRequest = (message: string, details?: ErrorDetail[]): AppError => new AppError(400, message, details);
+export const unauthorized = (message: string): AppError => new AppError(401, message);
 export const notFound = (message: string): AppError => new AppError(404, message);
+/** The request was valid but the resource's current state forbids it — a sync already running. */
+export const conflict = (message: string): AppError => new AppError(409, message);
 export const serviceUnavailable = (message: string): AppError => new AppError(503, message);
 
 /** The message off an unknown throw. `catch (err)` gives `unknown` under strict mode. */

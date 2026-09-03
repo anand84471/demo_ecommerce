@@ -6,8 +6,8 @@ import { validateListCategories } from '../validators/category.validator.js';
 
 /** GET /categories */
 export async function listCategories(req: Request, res: Response): Promise<Response> {
-  const options = validateListCategories(req.query);
-  const { categories, source } = await categoryService.listCategories(options);
+  validateListCategories(req.query);
+  const categories = await categoryService.listCategories();
 
-  return collection(res, categories, { total: categories.length, source });
+  return collection(res, categories, { total: categories.length });
 }

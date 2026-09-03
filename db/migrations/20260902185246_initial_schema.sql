@@ -1,4 +1,4 @@
--- MySQL schema — the system of record.
+-- The initial schema. MySQL is the system of record.
 --
 -- Normalised rather than a single JSON blob per product, because the relational shape is what
 -- makes the non-search questions cheap: "how many products per category", "which products carry
@@ -7,6 +7,11 @@
 -- Applied by the seed script rather than docker-entrypoint-initdb.d: that directory only runs on
 -- a first-time init of an empty data volume, so a schema change would silently not apply to
 -- anyone who already had the volume. Running it from the script makes it reproducible.
+--
+-- Every up statement is idempotent, which is what lets the seed re-apply the directory without a
+-- ledger. Keep it that way in later migrations, or the runner will need one.
+
+-- migrate:up
 
 CREATE TABLE IF NOT EXISTS categories (
     id         INT UNSIGNED    NOT NULL AUTO_INCREMENT,
@@ -111,3 +116,13 @@ CREATE TABLE IF NOT EXISTS product_reviews (
     CONSTRAINT fk_product_reviews_product FOREIGN KEY (product_id)
         REFERENCES products (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- migrate:down
+
+-- Reverse dependency order: a table cannot be dropped while a foreign key still points at it.
+DROP TABLE IF EXISTS product_reviews;
+DROP TABLE IF EXISTS product_tags;
+DROP TABLE IF EXISTS product_images;
+DROP TABLE IF EXISTS tags;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS categories;

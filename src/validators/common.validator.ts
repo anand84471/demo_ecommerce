@@ -30,8 +30,8 @@ interface Bounds {
 const scalar = (name: string) => z.unknown().transform((raw, ctx): string | undefined => {
   if (raw === undefined || raw === null) return undefined;
   if (typeof raw !== 'string') {
-    // Express parses a repeated parameter into an array, and silently taking the last one is how
-    // `?source=es&source=db` ends up served by a store the caller did not ask for.
+    // Express parses a repeated parameter into an array, and silently taking the last one is
+    // how `?category=beauty&category=furniture` returns a filter the caller did not ask for.
     ctx.addIssue({ code: 'custom', message: `'${name}' must be given exactly once` });
     return z.NEVER;
   }
@@ -40,7 +40,7 @@ const scalar = (name: string) => z.unknown().transform((raw, ctx): string | unde
 });
 
 /**
- * A parameter with a default, e.g. `?source=` -> `es`.
+ * A parameter with a default, e.g. `?limit=` -> 20.
  *
  * The transform applies to a key that is missing *or* empty, which `.default()` alone would not
  * do — it only fires on a missing one. Applying it here rather than inside each primitive is
@@ -102,8 +102,8 @@ export function numberParam(name: string, { min, max }: Bounds = {}): z.ZodType<
 /**
  * A closed set of values, matched case-insensitively.
  *
- * The literal union survives into the inferred type, so `options.source` is `'es' | 'db'` rather
- * than `string` and a service switching on it gets exhaustiveness for free.
+ * The literal union survives into the inferred type, so `options.order` is `'asc' | 'desc'`
+ * rather than `string` and a service switching on it gets exhaustiveness for free.
  */
 export function enumParam<T extends string>(
   name: string,
@@ -120,6 +120,31 @@ export function enumParam<T extends string>(
       return z.NEVER;
     }
     return lowered;
+  });
+  return schema.optional();
+}
+
+/**
+ * A calendar day, `YYYY-MM-DD`.
+ *
+ * The format is checked *and* the date is: `2026-02-31` matches the pattern and is not a day, and
+ * a query filtered on it would answer an empty list as if that were the truth.
+ */
+export function dateParam(name: string): z.ZodType<string | undefined> {
+  const schema = scalar(name).transform((value, ctx): string | undefined => {
+    if (value === undefined) return undefined;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      ctx.addIssue({ code: 'custom', message: `'${name}' must be YYYY-MM-DD (got '${value}')` });
+      return z.NEVER;
+    }
+    // Round-tripping is what catches a well-formed non-day: Date normalises 2026-02-31 to
+    // 2026-03-03, which no longer equals what was sent.
+    const parsed = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+      ctx.addIssue({ code: 'custom', message: `'${name}' is not a real date (got '${value}')` });
+      return z.NEVER;
+    }
+    return value;
   });
   return schema.optional();
 }
@@ -200,7 +225,12 @@ export function parsePathParam<T>(schema: z.ZodType<T | undefined>, name: string
 
 function describe(issue: z.core.$ZodIssue, allowed: string[]): string {
   if (issue.code === 'unrecognized_keys') {
-    return `Unknown query parameter(s): ${issue.keys.join(', ')}. Allowed: ${allowed.join(', ')}`;
+    // An endpoint with an empty shape needs its own wording — "Allowed: " with nothing after it
+    // reads like the list failed to render rather than like there is nothing to list.
+    const permitted = allowed.length > 0
+      ? `Allowed: ${allowed.join(', ')}`
+      : 'This endpoint takes no query parameters.';
+    return `Unknown query parameter(s): ${issue.keys.join(', ')}. ${permitted}`;
   }
   return issue.message;
 }
